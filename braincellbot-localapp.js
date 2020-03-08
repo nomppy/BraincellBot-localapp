@@ -1,7 +1,7 @@
 require('dotenv').config();
-const firebase = require('firebase/app');
 require("firebase/auth");
 require("firebase/firestore");
+const firebase = require('firebase/app');
 const axios = require('axios');
 const img2b64 = require('image-to-base64');
 
@@ -19,21 +19,43 @@ axios.defaults.headers['sec-fetch-mode'] = 'cors';
 axios.defaults.headers['sec-fetch-dest'] = 'empty';
 axios.defaults.headers['referer'] = 'https://discordapp.com/channels/@me';
 
-// const custom_token = process.env.CUSTOM_TOKEN;
+const custom_token = process.env.CUSTOM_TOKEN;
 
-// firebase.auth().signInWithCustomToken(custom_token).catch(function(error){
-//
-//     const errorCode = error.code;
-//     const errorMessage = error.message;
-//     console.log(errorCode);
-//     console.log(errorMessage);
-// });
+const firebaseConfig = {
+    apiKey: process.env.API_KEY,
+    projectId: 'braincell-bot-dpy',
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+auth.signInWithCustomToken(custom_token).catch(function(error){
+    const errorCode = error.code;
+    const errorMessage = error.message;
+    console.log(errorCode);
+    console.log(errorMessage);
+});
 
+// TODO: Listen for changes on db and invoke corresponding function
+const db = firebase.firestore();
+auth.onAuthStateChanged(function(user) {
+    if (user) {
+        const uid = user.uid;
+        console.log(uid);
+        const doc_ref = db.collection('users').doc(uid);
 
-change_status('Hello World!');
+        doc_ref.get().then(function(doc) {
+            if (doc.exists) {
+                console.log(doc.id, ' => ', doc.data());
+            } else {
+                console.log("No such document!");
+            }
+        }).catch(function(error){
+            console.log("Error getting document:", error);
+        })
+    }else {
+        console.log("User signed out.");
+    }
+});
 function change_status(status) {
-    // {"custom_status":{"text":"Braincell Counter: -5"}}
-    // {"custom_status":{"text":"Hello World!"}}
     const config = {
         url: 'https://discordapp.com/api/v6/users/@me/settings',
         method: 'patch',
