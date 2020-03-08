@@ -3,9 +3,23 @@ const firebase = require('firebase/app');
 require("firebase/auth");
 require("firebase/firestore");
 const axios = require('axios');
+const img2b64 = require('image-to-base64');
 
-const user_token = process.env.USER_TOKEN;
-const custom_token = process.env.CUSTOM_TOKEN;
+axios.defaults.headers['Authorization'] = process.env.TEST_USER_TOKEN;
+axios.defaults.headers['authority'] = 'discordapp.com';
+axios.defaults.headers['accept-language'] = 'en-US';
+axios.defaults.headers['user-agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
+    'AppleWebKit/537.36 (KHTML, like Gechko) ' +
+    'Chrome/82.0.4069.0 Safari/537.36';
+axios.defaults.headers['content-type'] = 'application/json';
+axios.defaults.headers['accept'] = '*/*';
+axios.defaults.headers['origin'] = 'https://discordapp.com';
+axios.defaults.headers['sec-fetch-site'] = 'same-origin';
+axios.defaults.headers['sec-fetch-mode'] = 'cors';
+axios.defaults.headers['sec-fetch-dest'] = 'empty';
+axios.defaults.headers['referer'] = 'https://discordapp.com/channels/@me';
+
+// const custom_token = process.env.CUSTOM_TOKEN;
 
 // firebase.auth().signInWithCustomToken(custom_token).catch(function(error){
 //
@@ -14,65 +28,67 @@ const custom_token = process.env.CUSTOM_TOKEN;
 //     console.log(errorCode);
 //     console.log(errorMessage);
 // });
-const url = 'https://cdn.discordapp.com/attachments/685938304012779592/685966854518210595/220px-Nicholas_Biddle_by_William_Inman.png';
 
-axios.defaults.baseURL = 'https://discordapp.com/api/v6';
-axios.defaults.headers['Authorization'] = user_token;
-change_avatar(url);
+
+change_status('Hello World!');
+function change_status(status) {
+    // {"custom_status":{"text":"Braincell Counter: -5"}}
+    // {"custom_status":{"text":"Hello World!"}}
+    const config = {
+        url: 'https://discordapp.com/api/v6/users/@me/settings',
+        method: 'patch',
+        data: {
+            'custom_status': {
+                'text': status
+            }
+        }
+    };
+    axios.request(config)
+        .then(function (response){
+            if (response.status === 200){
+                console.log('Status successfully updated!')
+            }
+        })
+        .catch(function (e){
+            console.error(e);
+        });
+}
+
 function change_avatar(img_link) {
 
-    console.log(url);
-    axios.get(url)
-        .then(function (response){
+    console.log(img_link);
+    axios.get(img_link)
+        .then(async function (response){
             console.log(response.status);
-            console.log(response.statusText);
             if (response.status===200){
-                const image = "data:" + response.headers["content-type"] + ";base64," + new Buffer.from(response.data).toString('base64');
-                console.log(image);
-                if (image !== undefined){
+                const dataURI = await img2b64(img_link);
+                if (dataURI !== undefined){
                     const config = {
-                        url: '/users/@me',
+                        url: 'https://discordapp.com/api/v6/users/@me',
                         method: 'patch',
-                        headers: {
-                            'authority': 'discordapp.com',
-                            'accept-language': 'en-US',
-                            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
-                                'AppleWebKit/537.36 (KHTML, like Gecko) ' +
-                                'Chrome/82.0.4069.0 Safari/537.36',
-                            'content-type': 'application/json',
-                            'accept': '*/*',
-                            'origin': 'https://discordapp.com',
-                            'sec-fetch-site': 'same-origin',
-                            'sec-fetch-mode': 'cors',
-                            'sec-fetch-dest': 'empty',
-                            'referer': 'https://discordapp.com/channels/@me'
-                        },
                         data: {
-                            'username': process.env.USER_NAME,
-                            'email': process.env.EMAIL,
-                            'password': process.env.PASSWORD,
-                            'avatar': image,
+                            'username': process.env.TEST_USER_NAME,
+                            'email': process.env.TEST_USER_EMAIL,
+                            'password': process.env.TEST_USER_PWD,
+                            'avatar': `data:${response.headers['content-type']};base64,${dataURI}`,
                             'discriminator': null,
                             'new_password': null
                         }
                     };
-
-                    console.log(config);
                     axios.request(config)
                         .then(function (response){
-                            console.log(response.status);
-                            console.log(response.statusText);
                             if (response.status===200){
                                 console.log("Avatar successfully updated!");
                             }
                         })
                         .catch(function (error){
-                            // console.error(error);
+                            console.error(error);
                         });
-                }
-            }
+                } }
         })
         .catch(function (error){
-            console.error(error);
+            // console.error(error);
         });
 }
+
+
