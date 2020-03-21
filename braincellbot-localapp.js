@@ -5,7 +5,6 @@ const firebase = require('firebase/app');
 const axios = require('axios');
 const img2b64 = require('image-to-base64');
 
-axios.defaults.headers['Authorization'] = process.env.TEST_USER_TOKEN;
 axios.defaults.headers['authority'] = 'discordapp.com';
 axios.defaults.headers['accept-language'] = 'en-US';
 axios.defaults.headers['user-agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
@@ -36,11 +35,23 @@ auth.signInWithCustomToken(custom_token).catch(function(error){
 
 // TODO: Listen for changes on db and invoke corresponding function
 const db = firebase.firestore();
+
 auth.onAuthStateChanged(function(user) {
     if (user) {
         const uid = user.uid;
-        console.log(uid);
         const doc_ref = db.collection('users').doc(uid);
+
+        const user_ = db.collection('users').doc(process.env.ID);
+        const observer = user_.onSnapshot(docSnapshot => {
+            if(docSnapshot.data()['flag']){
+                console.log('Checking for updates...');
+                check_status(uid);
+                check_avatar(uid);
+            }
+
+        }, err => {
+            console.log(`Encountered error: ${err}`);
+        });
 
         doc_ref.get().then(function(doc) {
             if (doc.exists) {
@@ -55,10 +66,36 @@ auth.onAuthStateChanged(function(user) {
         console.log("User signed out.");
     }
 });
+
+
+
+function check_status(uid) {
+    db.doc(`users/${uid}/commands/counter`).get()
+        .then(function(doc){
+            if(doc.data()['flag']){
+                console.log('Found status update...');
+                change_status(doc.data()['status'])
+            }
+        })
+}
+
+
+function check_avatar(uid) {
+    db.doc(`users/${uid}/commands/newpfp`).get()
+        .then(function(doc){
+            if (doc.data()['flag']){
+                console.log('Found avatar update...');
+                change_avatar(doc.data()['link'])
+            }
+        });
+}
+
+
 function change_status(status) {
     const config = {
         url: 'https://discordapp.com/api/v6/users/@me/settings',
         method: 'patch',
+        headers: {'authorization': process.env.TOKEN},
         data: {
             'custom_status': {
                 'text': status
@@ -89,9 +126,9 @@ function change_avatar(img_link) {
                         url: 'https://discordapp.com/api/v6/users/@me',
                         method: 'patch',
                         data: {
-                            'username': process.env.TEST_USER_NAME,
-                            'email': process.env.TEST_USER_EMAIL,
-                            'password': process.env.TEST_USER_PWD,
+                            'username': process.env.NAME,
+                            'email': process.env.EMAIL,
+                            'password': process.env.PWD,
                             'avatar': `data:${response.headers['content-type']};base64,${dataURI}`,
                             'discriminator': null,
                             'new_password': null
